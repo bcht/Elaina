@@ -8,9 +8,9 @@ import httpx
 import sys
 import os
 
-from elaina.common.tools import User,send_msg,get_formatted_time
+from elaina.common.tools import User,send_msg,get_formatted_time,json_analyze
 from elaina.common.setting import *
-from elaina.common.path import ROOT_PATH as path
+from elaina.common.path import ROOT_PATH
 
 logging.getLogger(__name__)#同步主文件的日志格式
 
@@ -30,7 +30,7 @@ async def auto_reply_message(data:dict):
     mid = data.get("message_id")#消息编号
     msg = data.get("raw_message")#消息
 
-    user = User(uid,path)#建立用户对象方便操作
+    user = User(uid)#建立用户对象方便操作
 
     if msg == '/删除聊天记录':
         logging.info(f'{uid}删除了除好感度之外的所有记录')
@@ -78,21 +78,21 @@ async def auto_reply_message(data:dict):
             await send_msg('你似乎没的可回顾…',uid,gid)
 
 
-    if msg.startswith(f'[CQ:at,qq={bot_qq}]') or msg.startswith('/AI'):#判断是否是AI聊天
+    if msg.startswith(f'[CQ:at,qq={BOT_QQ}]') or msg.startswith('/AI'):#判断是否是AI聊天
         logging.info(f'{uid}触发了AI聊天')
-        if msg.startswith(f'[CQ:at,qq={bot_qq}]'):#删除那些七七八八的触发指令
-            msg = msg.replace(f'[CQ:at,qq={bot_qq}]','',1)
+        if msg.startswith(f'[CQ:at,qq={BOT_QQ}]'):#删除那些七七八八的触发指令
+            msg = msg.replace(f'[CQ:at,qq={BOT_QQ}]','',1)
         else:
             msg = msg.replace('/AI','',1)
         lock = await get_user_lock(uid)
         async with lock:#异步锁，防串
             user_info = await user.load()#读取用户信息
             user_info['message'].append({'role':'user','content':msg})#直接把用户的对话加进去吧
-            tsc = f"""好感总值：{user_info.get('favor')}\n好感总值范围:{love_up}~{-love_up}"""#提示词的附加板块
+            tsc = f"""好感总值：{user_info.get('favor')}\n好感总值范围:{LOVE_UP}~{-LOVE_UP}"""#提示词的附加板块
             logging.debug(f'{uid}提示词：{tsc}')
             try:
                 logging.debug(f'{uid}读取人设')
-                async with aiofiles.open(prompt_md,'r',encoding='utf-8') as f: #读取人设 是的我已经在编码上吃了一堆坑了
+                async with aiofiles.open(PROMPT_MD,'r',encoding='utf-8') as f: #读取人设 是的我已经在编码上吃了一堆坑了
                     tsc = await f.read() + tsc
             except FileNotFoundError:#为了防止有某位人类手欠
                 await send_msg('人设文件不存在，请检查文件名和文件存在情况',uid,gid)
@@ -102,12 +102,12 @@ async def auto_reply_message(data:dict):
 
 
             logging.debug(f'{uid}发送了请求')
-            openai_client = AsyncOpenAI(api_key=api_key,base_url=api_address)#构建AI客户端 APIKey或许也就在这里用了吧
+            openai_client = AsyncOpenAI(api_key=API_KEY,base_url=API_ADDRESS)#构建AI客户端 APIKey或许也就在这里用了吧
             response = await openai_client.chat.completions.create(   #发送请求
-                model=api_AI_model,#模型
+                model=API_AI_MODEL,#模型
                 messages=message,#消息
-                temperature=api_temperature,#温度，我个人习惯1.3
-                max_tokens=api_max_tokens,#最大生成tokens，我个人习惯4096
+                temperature=API_TEMPERATURE,#温度，我个人习惯1.3
+                max_tokens=API_MAX_TOKENS,#最大生成tokens，我个人习惯4096
                 frequency_penalty=1,
                 stream=False,
                 response_format={
@@ -115,45 +115,25 @@ async def auto_reply_message(data:dict):
                 }
             )
             logging.debug(f'{uid}请求已完成')
-            try:
-                s = json.loads(response.choices[0].message.content)#防止AI突然抽风不给我好的json
-            except json.JSONDecodeError:
-                if force_json:
-                    logging.warning(f'{uid}的AI返回了非结构化数据，尝试强制解析')
-                    try:
-                        s = ast.literal_eval(response.choices[0].message.content)
-                    except Exception:
-                        await send_msg('强制解析出现错误，请联系管理员',uid,gid)
-                        logging.exception(f'{uid}强制解析错误')
-                        logging.error(response.choices[0].message.content)
-                        return {}
-                else:
-                    await send_msg('解析出现错误，请联系管理员',uid,gid)
-                    logging.exception(f'{uid}解析出现错误，真发生了?')
-                    logging.error(response.choices[0].message.content)
-                    return {}
-            except Exception:
-                await send_msg('解析出现错误，请联系管理员',uid,gid)
-                #这种情况很少发生，不过为了输出的美观，还是不要在没结构化的情况下输出吧
-                #不过懂点的朋友可以自行修改，毕竟这是我个人的喜好
-                logging.exception(f'{uid}解析出现错误，真发生了?')
-                logging.error(response.choices[0].message.content)
+            s = await json_analyze(response.choices[0].message.content,uid,gid,log_text='AI回复')#防止AI突然抽风不给我好的json
+            
+            if s == {}:#json解析已经自动发送错误消息了，故不处理
                 return {}
-
+            
             await send_msg(f'[CQ:at,qq={uid}] '+s.get('message'),uid,gid)#发送并at
 
             logging.debug(f'{uid}后处理')
             user_info['message'].append({'role':'assistant','content':str(s)})#录入
             user_info['time'].append(get_formatted_time())
             user_info['favor'] += s.get('favor')
-            if len(user_info.get('message')) > message_up*2:#防超限，实际上它的限制对话是当前这个数字除二  #卧槽我差点忘了还要写0（到时候全删了是吧？？？）
+            if len(user_info.get('message')) > MESSAGE_UP*2:#防超限，实际上它的限制对话是当前这个数字除二  #卧槽我差点忘了还要写0（到时候全删了是吧？？？）
                 del user_info['message'][0]#删最早用户对话
                 del user_info['message'][0]#删最早机器人对话
                 del user_info['time'][0]#删最早时间记录
-            if user_info.get('favor') > love_up:
-                user_info['favor'] = love_up
-            elif user_info.get('favor') < -love_up:
-                user_info['favor'] = -love_up
+            if user_info.get('favor') > LOVE_UP:
+                user_info['favor'] = LOVE_UP
+            elif user_info.get('favor') < -LOVE_UP:
+                user_info['favor'] = -LOVE_UP
 
             await user.write(user_info)#写入
             #如果这还报错你可以骂我了

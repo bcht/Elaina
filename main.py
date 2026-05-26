@@ -7,7 +7,6 @@ import json
 import requests
 import ast
 import logging
-import config
 import importlib
 import ota
 import uvicorn
@@ -37,11 +36,11 @@ if not os.path.exists(os.path.join(path,'group_json')):
     logging.warning('群聊数据库不存在，创建')
     os.makedirs(os.path.join(path,'group_json'))
 
-server = FastAPI(title='Elaina')
-client_version = 'v2.0.0'# 机器人版本，用于OTA，不要修改
-file_lock = asyncio.Lock() #谁持锁，这文件就是谁的天下。函数啊，大文件…就给你了…(趋势)(大清就交给你了)
+SERVER = FastAPI(title='Elaina')
+CLIENT_VERSION = 'v2.0.0'# 机器人版本，用于OTA，不要修改
+FILE_LOCK = asyncio.Lock() #谁持锁，这文件就是谁的天下。函数啊，大文件…就给你了…(趋势)(大清就交给你了)
 user_locks = {}  # 存储每个用户的锁
-keep_file = ['config.py','user_json','group_json']
+KEEP_FILE = ['config.py','user_json','group_json']
 
 def get_formatted_time():
     """返回当前时间，格式为 '年份-月份-日期-小时:分钟:秒'"""
@@ -63,19 +62,19 @@ def get_formatted_time():
 
 async def get_user_lock(uid: int):
     """获取用户专属的异步锁"""
-    async with file_lock:
+    async with FILE_LOCK:
         if uid not in user_locks:
             user_locks[uid] = asyncio.Lock()
         return user_locks[uid]
 
-@server.post('/')
+@SERVER.post('/')
 async def auto_reply_message(data: dict):
     uid = data.get("user_id")#目标qq
     gid = data.get("group_id")#群聊qq
     mid = data.get("message_id")#消息编号
     msg = data.get("raw_message")#消息
 
-    if msg is not None and (msg[0]=='/' or msg.startswith(f'[CQ:at,qq={bot_qq}]')):#若消息不为空，且开头为斜杠或at的情况下受理
+    if msg is not None and (msg[0]=='/' or msg.startswith(f'[CQ:at,qq={BOT_QQ}]')):#若消息不为空，且开头为斜杠或at的情况下受理
         msg = msg.replace("&#91;", "[").replace("&#93;", "]").replace("&amp;", "&").replace("&#44;", ",")#转码
         data['msg'] = msg
         if uid==2854196310:#这里是防Q群管家
@@ -96,10 +95,10 @@ async def auto_reply_message(data: dict):
     return {}
 
 if __name__ == '__main__':#但愿没人闲的没事把这玩意当模块跑
-    logging.info(f'当前版本:{client_version}')
-    if OTA_allow:
+    logging.info(f'当前版本:{CLIENT_VERSION}')
+    if OTA_ALLOW:
         logging.info('正在检查更新...')
-        success, msg = ota.ota_update(client_version, github_repo, auto_restart=True)
+        success, msg = ota.ota_update(CLIENT_VERSION, GITHUB_REPO, auto_restart=True)
         logging.info(msg)
         
-    uvicorn.run(server,host=client_address,port=client_port)#每日禁用debug(1/1)
+    uvicorn.run(SERVER,host=CLIENT_ADDRESS,port=CLIENT_PORT)#每日禁用debug(1/1)

@@ -28,10 +28,10 @@
 2. 使用git  
 随便找个文件夹，在该文件夹内打开终端，输入下面的一大长串就可以下载了
 ```Bash
-git clone https://github.com/bcht1145/QQ_Elaina_ChatBot.git
+git clone https://github.com/bcht/QQ_Elaina_ChatBot.git
 ```  
 
-在下载之后，还要下载Elaina的依赖  
+在下载之后，还要下载Elaina的依赖(在项目根目录下)  
 ```bash
 pip install -r requirements.txt
 ```

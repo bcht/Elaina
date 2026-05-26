@@ -4,12 +4,13 @@ import os
 import sys
 
 from elaina.common.setting import *
+from elaina.tools.base.send_http import send_http_post
 
 logging.getLogger(__name__)#同步主文件的日志格式
 
 async def send_msg(msg,uid : int,gid : int,mid = None) -> None:
     """发送信息"""
-    url = server_address
+    url = SERVER_ADDRESS
     data = {}
     if gid is not None:#优先判断群聊
         url+='/send_group_msg'
@@ -24,8 +25,7 @@ async def send_msg(msg,uid : int,gid : int,mid = None) -> None:
         data.update({'message':f'{msg}'})
     
     try:
-        async with httpx.AsyncClient() as client:#使用异步调用post
-            await client.post(url,json=data,timeout=5)
+        await send_http_post(url,data)
         logging.debug('已发送消息')
         #但愿以后我用不到这行requests
         #requests.post(url,json=data,timeout=5)
