@@ -18,7 +18,7 @@ API_TEMPERATURE = 1.3                      # AI的温度，如不懂或是无此
 API_MAX_TOKENS = 4096                      # AI的最大输出量，请保证你清楚你在做什么后再修改，否则无需修改
 
 OTA_ALLOW = False                          # OTA目前为测试状态，如果你不嫌可能会炸，那就可以试试
-GITHUB_REPO = "bcht/QQ_Elaina_ChatBot"     # Github仓库地址，不要修改，除非你知道你在做什么，这很重要
+GITHUB_REPO = "bcht/Elaina"                # Github仓库地址，不要修改，除非你知道你在做什么，这很重要
 BOT_QQ = 114514                            # 机器人QQ号
 ADMIN = [114514]                           # 机器人管理员QQ，为保障安全，暂不支持直接修改
 FORCE_JSON = False                         # 尝试使用更宽松的方式去判定json，若频繁出现解析错误，请调整为True，否则无需修改
