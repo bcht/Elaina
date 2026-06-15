@@ -23,6 +23,7 @@ BOT_QQ = 114514                            # 机器人QQ号
 ADMIN = [114514]                           # 机器人管理员QQ，为保障安全，暂不支持直接修改
 FORCE_JSON = False                         # 尝试使用更宽松的方式去判定json，若频繁出现解析错误，请调整为True，否则无需修改
 PROMPT_MD = 'rs.md'                        # AI的提示词文件，默认使用md文件，且默认读取在程序根目录中。如需调整位置，请输入绝对路径
+DATABASE_TYPE = 'json'                     # 用于规定数据库类型，一般情况下，json是最能可视化的，若你的磁盘性能不足，还是请改为sqlite
 
 MESSAGE_UP = 50                            # 最高对话回合数
 LOVE_UP = 100                              # 最高好感度
