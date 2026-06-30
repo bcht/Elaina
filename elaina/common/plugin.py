@@ -2,7 +2,6 @@ import sys
 import os
 import logging
 import asyncio
-logging.getLogger(__name__)#同步主文件的日志格式
 
 #仅允许main.py调用
 from elaina.plugin.user_ai_msgreply import auto_reply_message as _user_ai

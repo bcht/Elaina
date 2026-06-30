@@ -12,7 +12,7 @@ from elaina.common.tools import User,send_msg,get_formatted_time,json_analyze
 from elaina.common.setting import *
 from elaina.common.path import ROOT_PATH
 
-logging.getLogger(__name__)#同步主文件的日志格式
+logger = logging.getLogger(__name__)#同步主文件的日志格式
 
 file_lock = asyncio.Lock() #谁持锁，这文件就是谁的天下。函数啊，大文件…就给你了…(趋势)(大清就交给你了)
 user_locks = {}  # 存储每个用户的锁
@@ -33,7 +33,7 @@ async def auto_reply_message(data:dict):
     user = User(uid)#建立用户对象方便操作
 
     if msg == '/删除聊天记录':
-        logging.info(f'{uid}删除了除好感度之外的所有记录')
+        logger.info(f'{uid}删除了除好感度之外的所有记录')
         #删除处好感度以外的所有数据
         await send_msg('聊天记录已清除，其余未变',uid,gid)
         user_info = await user.load()
@@ -42,14 +42,14 @@ async def auto_reply_message(data:dict):
         return {}
 
     if msg == '/重置聊天记录':
-        logging.info(f'{uid}删除了所有记录')
+        logger.info(f'{uid}删除了所有记录')
         #全清了！！！
         await send_msg('记录已全部删除',uid,gid)
         await user.delete()
         return {}
 
     if msg.startswith('/撤回上一条'):
-        logging.info(f'{uid}撤回了上一条')
+        logger.info(f'{uid}撤回了上一条')
         user_info = await user.load()
         if user_info['message'] != []:#删两遍，因为同时有机器人和用户的对话，删的是一回合
             s = user_info['message'].pop()#如果没毛病，那这里就是机器人的回复了(没想到吧我pop()有返回值)
@@ -60,26 +60,26 @@ async def auto_reply_message(data:dict):
             await user.write(user_info)
             await send_msg('已撤回，好感度恢复',uid,gid)
         else:
-            logging.info(f'{uid}但他似乎没聊过…')
+            logger.info(f'{uid}但他似乎没聊过…')
             await send_msg('你似乎没的可撤回…',uid,gid)
 
     if  msg.startswith('/查看好感度'):
-        logging.info(f'{uid}查看了好感度')
+        logger.info(f'{uid}查看了好感度')
         user_info = await user.load()
         await send_msg(f'当前好感度：{user_info["favor"]}',uid,gid)
 
     if msg.startswith('/查看上一条'):
-        logging.info(f'{uid}查看了上一条')
+        logger.info(f'{uid}查看了上一条')
         user_info = await user.load()
         if user_info['message'] != []:
             await send_msg(f'你：{user_info["message"][-2]['content']}\n我：{ast.literal_eval(user_info["message"][-1]['content'])['message']}\n时间：{user_info['time'][-1]}',uid,gid)
         else:
-            logging.info(f'{uid}但似乎没的可回顾…')
+            logger.info(f'{uid}但似乎没的可回顾…')
             await send_msg('你似乎没的可回顾…',uid,gid)
 
 
     if msg.startswith(f'[CQ:at,qq={BOT_QQ}]') or msg.startswith('/AI'):#判断是否是AI聊天
-        logging.info(f'{uid}触发了AI聊天')
+        logger.info(f'{uid}触发了AI聊天')
         if msg.startswith(f'[CQ:at,qq={BOT_QQ}]'):#删除那些七七八八的触发指令
             msg = msg.replace(f'[CQ:at,qq={BOT_QQ}]','',1)
         else:
@@ -89,19 +89,19 @@ async def auto_reply_message(data:dict):
             user_info = await user.load()#读取用户信息
             user_info['message'].append({'role':'user','content':msg})#直接把用户的对话加进去吧
             tsc = f"""好感总值：{user_info.get('favor')}\n好感总值范围:{LOVE_UP}~{-LOVE_UP}"""#提示词的附加板块
-            logging.debug(f'{uid}提示词：{tsc}')
+            logger.debug(f'{uid}提示词：{tsc}')
             try:
-                logging.debug(f'{uid}读取人设')
+                logger.debug(f'{uid}读取人设')
                 async with aiofiles.open(PROMPT_MD,'r',encoding='utf-8') as f: #读取人设 是的我已经在编码上吃了一堆坑了
                     tsc = await f.read() + tsc
             except FileNotFoundError:#为了防止有某位人类手欠
                 await send_msg('人设文件不存在，请检查文件名和文件存在情况',uid,gid)
-                logging.exception('人设文件不存在，请检查文件名和文件存在情况')
+                logger.exception('人设文件不存在，请检查文件名和文件存在情况')
                 return {}
             message = [{'role':'system','content':tsc}] + user_info.get('message')
 
 
-            logging.debug(f'{uid}发送了请求')
+            logger.debug(f'{uid}发送了请求')
             openai_client = AsyncOpenAI(api_key=API_KEY,base_url=API_ADDRESS)#构建AI客户端 APIKey或许也就在这里用了吧
             response = await openai_client.chat.completions.create(   #发送请求
                 model=API_AI_MODEL,#模型
@@ -114,7 +114,7 @@ async def auto_reply_message(data:dict):
                     'type':'json_object'#确保必须是结构化输出
                 }
             )
-            logging.debug(f'{uid}请求已完成')
+            logger.debug(f'{uid}请求已完成')
             s = await json_analyze(response.choices[0].message.content,uid,gid,log_text='AI回复')#防止AI突然抽风不给我好的json
             
             if s == {}:#json解析已经自动发送错误消息了，故不处理
@@ -122,7 +122,7 @@ async def auto_reply_message(data:dict):
             
             await send_msg(f'[CQ:at,qq={uid}] '+s.get('message'),uid,gid)#发送并at
 
-            logging.debug(f'{uid}后处理')
+            logger.debug(f'{uid}后处理')
             user_info['message'].append({'role':'assistant','content':str(s)})#录入
             user_info['time'].append(get_formatted_time())
             user_info['favor'] += s.get('favor')

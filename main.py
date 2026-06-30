@@ -25,15 +25,15 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
     )
 #在没有错误日志的情况下诊断任何问题无异于闭眼开车——Apache官方文档
-logging.getLogger(__name__)
+logger = logging.getLogger(__name__)#方便查看是哪个模块
 
 path =  os.path.dirname(__file__) #文件路径
-logging.debug(f'路径:{path}')
+logger.debug(f'路径:{path}')
 if not os.path.exists(os.path.join(path,'user_json')):#初始化ing
-    logging.warning('用户数据库不存在，创建')
+    logger.warning('用户数据库不存在，创建')
     os.makedirs(os.path.join(path,'user_json'))
 if not os.path.exists(os.path.join(path,'group_json')):
-    logging.warning('群聊数据库不存在，创建')
+    logger.warning('群聊数据库不存在，创建')
     os.makedirs(os.path.join(path,'group_json'))
 
 SERVER = FastAPI(title='Elaina')
@@ -48,7 +48,7 @@ def get_formatted_time():
 
 # def hot_reload_config():
 #     """用于热重载配置文件"""
-#     logging.info('正在热重载配置文件')
+#     logger.info('正在热重载配置文件')
 #     importlib.reload(config)
 #     globals().update({k: v for k, v in vars(config).items() if not k.startswith("_")})
 #     """
@@ -78,7 +78,7 @@ async def auto_reply_message(data: dict):
         msg = msg.replace("&#91;", "[").replace("&#93;", "]").replace("&amp;", "&").replace("&#44;", ",")#转码
         data['msg'] = msg
         if uid==2854196310:#这里是防Q群管家
-            logging.debug('Q群管家at你了')
+            logger.debug('Q群管家at你了')
             return {}
         await ai_auto_reply_message(data)
 
@@ -88,17 +88,17 @@ async def auto_reply_message(data: dict):
                     await send_msg(f'{f.read()}',uid,gid)
             except FileNotFoundError:
                 await send_msg('未找到帮助文档文件',uid,gid)
-                logging.exception('未找到帮助文档文件，请确认help.txt是否存在且未重命名')
+                logger.exception('未找到帮助文档文件，请确认help.txt是否存在且未重命名')
                 return {}
             return {}
         
     return {}
 
 if __name__ == '__main__':#但愿没人闲的没事把这玩意当模块跑
-    logging.info(f'当前版本:{CLIENT_VERSION}')
+    logger.info(f'当前版本:{CLIENT_VERSION}')
     if OTA_ALLOW:
-        logging.info('正在检查更新...')
+        logger.info('正在检查更新...')
         success, msg = ota.ota_update(CLIENT_VERSION, GITHUB_REPO, auto_restart=True)
-        logging.info(msg)
+        logger.info(msg)
         
     uvicorn.run(SERVER,host=CLIENT_ADDRESS,port=CLIENT_PORT)#每日禁用debug(1/1)

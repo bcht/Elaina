@@ -8,7 +8,7 @@ import aiofiles
 
 from elaina.common.path import ROOT_PATH
 
-logging.getLogger(__name__)#同步主文件的日志格式
+logger = logging.getLogger(__name__)#同步主文件的日志格式
 
 user_template = {#用户文件模版
     "message":[],#消息，包括用户和机器人的
@@ -85,7 +85,7 @@ class User:
         注意，别传入一个不是字典的玩意  
         不要让我在修bug的时候看到这玩意报错!!!"""
         if not is_user_template_complete(data):#我不管，就算我提醒了我也要做个防备措施
-            logging.error(f'{self.uid}模版不匹配！')
+            logger.error(f'{self.uid}模版不匹配！')
             raise ValueError('模版不匹配！李在干什麽？')
             return #我知道这行没意义，但是我就是习惯了
         

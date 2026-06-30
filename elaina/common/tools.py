@@ -1,7 +1,6 @@
 import sys
 import os
 import logging
-logging.getLogger(__name__)#同步主文件的日志格式
 
 #工具函数    仅允许plugin和main.py使用
 from elaina.tools.advance.send_msg import send_msg as _send_message
