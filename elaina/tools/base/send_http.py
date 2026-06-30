@@ -1,5 +1,6 @@
 import httpx
 import logging
+import asyncio
 
 logger = logging.getLogger(__name__)#同步主文件的日志格式
 
@@ -27,6 +28,7 @@ async def send_http_post(url:str,data:dict,try_limit:int=5) -> None:
             break #不重试
         except Exception:
             logger.exception('httpx发送出现错误')
+        await asyncio.sleep(2 ** i)
 
 async def http_download(url:str,data:dict,try_limit:int=5):
     """
@@ -62,3 +64,4 @@ async def http_download(url:str,data:dict,try_limit:int=5):
             break #不重试
         except Exception:
             logger.exception('httpx下载出现错误')
+        await asyncio.sleep(2 ** i)
