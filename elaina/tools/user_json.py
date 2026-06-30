@@ -7,39 +7,9 @@ import aiofiles
 #MySQL?在编了在编了
 
 from elaina.common.path import ROOT_PATH
+from elaina.tools.advance.check_user_template import user_template,is_user_template_complete
 
 logger = logging.getLogger(__name__)#同步主文件的日志格式
-
-user_template = {#用户文件模版
-    "message":[],#消息，包括用户和机器人的
-    "favor":0,#好感度
-    "time":[]
-}
-
-def is_user_template_complete(data : dict ) -> bool:#用于检查传入的字典是否符合规范
-    """
-    输入  
-    data->dict  
-    输出  
-    bool  
-    用于检查用户信息是否符合模版，返回True表示符合模版，返回False表示不符合模版  
-    防呆不防傻，只要我不傻，并且用这个，估计就没毛病  
-    """
-    # 必需键集合
-    required_keys = {"message", "favor", "time"}
-    # 检查键是否存在
-    if not all(key in data for key in required_keys):
-        return False
-    # 检查值的类型
-    type_checks = {
-        "message": list,
-        "favor": int,
-        "time": list
-    }
-    for key, expected_type in type_checks.items():#挨个检查  #将样本转换为可遍历的类型
-        if not isinstance(data[key], expected_type):#判断是否为当前的类型
-            return False
-    return True
 
 class User:
     def __init__(self,uid):#初始化
@@ -91,6 +61,3 @@ class User:
         
         async with aiofiles.open(self._path,'w',encoding='utf-8') as f:
             await f.write(json.dumps(data,ensure_ascii=False,indent=4))
-    
-if __name__ == '__main__':
-    print('我还是很好奇，你运行这个干啥')

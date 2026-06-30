@@ -81,9 +81,9 @@ def replace_files(source_dir, keep_files=None):
         
         # 默认保留的文件
         if keep_files is None:
-            keep_files = ["config.py"]
+            keep_files = ["config.py","elaina.db"]
         else:
-            keep_files = list(set(keep_files + ["config.py"]))  # config.py 永远保留
+            keep_files = list(set(keep_files + ["config.py","elaina.db"]))  # config.py elaina.db 永远保留
         
         # 获取源文件列表（排除要保留的）
         source_items = {item for item in os.listdir(source_dir) if item not in keep_files}

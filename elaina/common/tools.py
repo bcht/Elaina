@@ -4,9 +4,15 @@ import logging
 
 #工具函数    仅允许plugin和main.py使用
 from elaina.tools.advance.send_msg import send_msg as _send_message
-from elaina.tools.user_json import User as _Users
+from elaina.tools.user_json import User as _Json_User
 from elaina.tools.base.time_get import get_formatted_time as _get_time # 这是例外，理论上来说base不允许直接调用，必须走旁路
 from elaina.tools.auto_load_json import json_analyze as _json_analyze
+from elaina.tools.advance.check_user_template import is_user_template_complete as _is_user_template_complete,user_template as _user_template
+from elaina.tools.user_sqlite import User as _SQLite_User
+from elaina.common.setting import DATABASE_TYPE as _db_type
+
+user_template = _user_template# 定义用户模版
+_db_type = _db_type.lower()
 
 #对外提供接口
 async def send_msg(msg:str,uid:int,gid:int,mid=None):
@@ -23,7 +29,7 @@ async def send_msg(msg:str,uid:int,gid:int,mid=None):
     """
     return await _send_message(msg,uid,gid,mid)
 
-def User(uid) -> _Users:
+def User(uid) -> _Json_User:
     """
     创建用户对象  
     传入:  
@@ -31,7 +37,10 @@ def User(uid) -> _Users:
     返回:  
     User -> 用户对象
     """
-    return _Users(uid)
+    if _db_type == "sqlite":#要的就是上层无感！
+        return _SQLite_User(uid)
+    elif _db_type == "json":
+        return _Json_User(uid)
 
 def get_formatted_time() -> str:
     """
@@ -39,7 +48,8 @@ def get_formatted_time() -> str:
     传入:  
     None  
     返回:  
-    str -> 当前时间
+    str -> 当前时间  
+    **注意该函数为同步函数**  
     """
     return _get_time()
 
@@ -55,3 +65,15 @@ async def json_analyze(text:str,uid:int|str,gid:int|str,log_text:str=None) -> di
     dict -> 解析后的json文本
     """
     return await _json_analyze(text,uid,gid,log_text)
+
+def is_user_template_complete(data : dict ) -> bool:
+    """
+    输入  
+    data->dict  
+    输出  
+    bool  
+    用于检查用户信息是否符合模版，返回True表示符合模版，返回False表示不符合模版  
+    防呆不防傻，只要我不傻，并且用这个，估计就没毛病  
+    **注意该函数为同步函数**  
+    """
+    return _is_user_template_complete(data)

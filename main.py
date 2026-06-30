@@ -2,6 +2,8 @@ from config import *
 from fastapi import *
 from datetime import datetime
 from fastapi.responses import *
+from contextlib import asynccontextmanager# 用于生命周期函数
+#不要管没有调用的库，总有一天会用的，额，不用反正也没啥影响
 import os
 import json
 import requests
@@ -13,8 +15,10 @@ import uvicorn
 import httpx
 import asyncio
 import aiofiles
+import aiosqlite
 
 from elaina.common.plugin import ai_auto_reply_message,send_msg
+from elaina.common import setting# 挂数据库对象
 
 #首先，去他丫的LOGO
 #我肯定是不会写LOGO，占地
@@ -37,10 +41,10 @@ if not os.path.exists(os.path.join(path,'group_json')):
     os.makedirs(os.path.join(path,'group_json'))
 
 SERVER = FastAPI(title='Elaina')
-CLIENT_VERSION = 'v2.1.3'# 机器人版本，用于OTA，不要修改
+CLIENT_VERSION = 'v2.2.0'# 机器人版本，用于OTA，不要修改
 FILE_LOCK = asyncio.Lock() #谁持锁，这文件就是谁的天下。函数啊，大文件…就给你了…(趋势)(大清就交给你了)
 user_locks = {}  # 存储每个用户的锁
-KEEP_FILE = ['config.py','user_json','group_json']
+KEEP_FILE = ['config.py','user_json','group_json','elaina.db']
 
 def get_formatted_time():
     """返回当前时间，格式为 '年份-月份-日期-小时:分钟:秒'"""
@@ -60,12 +64,49 @@ def get_formatted_time():
 因为主要的功能被移到后端了,因此热加载不能用了QAQ
 """
 
-async def get_user_lock(uid: int):
-    """获取用户专属的异步锁"""
-    async with FILE_LOCK:
-        if uid not in user_locks:
-            user_locks[uid] = asyncio.Lock()
-        return user_locks[uid]
+async def database_init():
+    # 初始化数据库
+    logger.info('正在初始化数据库')
+    db_type = DATABASE_TYPE.lower()# 转小写方便判断
+    if db_type == 'sqlite':
+        await setting.db.executescript("""
+        CREATE TABLE IF NOT EXISTS users(
+            uid INTEGER PRIMARY KEY,
+            favor INTEGER DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS messages(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uid INTEGER,
+            role TEXT,
+            content TEXT,
+            time TEXT,
+            FOREIGN KEY (uid) REFERENCES users(uid)
+        );
+        """)
+        await setting.db.commit()
+
+@asynccontextmanager
+async def lifespan():
+    # 控制FastAPI的生命周期函数,人话就是yield前面的是启动时做的,后面的是停止时做的
+    db_type = DATABASE_TYPE.lower()# 转小写方便判断
+    logger.debug(f'数据库类型:{db_type}')
+    db = None
+    if db_type == 'sqlite':
+        logger.info('确定为sqlite数据库')
+        logger.info('正在创建sqlite数据库')
+        try:
+            db = await aiosqlite.connect('elaina.db')# 连接并创建数据库对象
+        except aiosqlite.OperationalError:
+            logger.error('无法连接数据库，请检查数据库文件权限')
+            raise #抛出错误，强制停止
+        setting.db = db
+        await database_init()
+
+    yield# 这里指的是正常跑HTTP服务
+
+    if db_type == 'sqlite' and db:
+        logger.info('正在关闭sqlite数据库')
+        await db.close()# 确保关闭
 
 @SERVER.post('/')
 async def auto_reply_message(data: dict):
@@ -80,6 +121,7 @@ async def auto_reply_message(data: dict):
         if uid==2854196310:#这里是防Q群管家
             logger.debug('Q群管家at你了')
             return {}
+        #运行已在此注册的功能
         await ai_auto_reply_message(data)
 
         if msg == '/help':#用于获取帮助
@@ -101,4 +143,4 @@ if __name__ == '__main__':#但愿没人闲的没事把这玩意当模块跑
         success, msg = ota.ota_update(CLIENT_VERSION, GITHUB_REPO, auto_restart=True)
         logger.info(msg)
         
-    uvicorn.run(SERVER,host=CLIENT_ADDRESS,port=CLIENT_PORT)#每日禁用debug(1/1)
+    uvicorn.run(SERVER,host=CLIENT_ADDRESS,port=CLIENT_PORT,lifespan=lifespan)#每日禁用debug(1/1)
