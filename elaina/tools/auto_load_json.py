@@ -1,6 +1,7 @@
 import json
 import logging
 import ast
+import re
 
 from elaina.common.setting import FORCE_JSON
 from elaina.tools.advance.send_msg import send_msg # 允许高级模块调用下层模块
@@ -25,7 +26,8 @@ async def json_analyze(text:str,uid:int|str,gid:int|str,log_text:str=None) -> di
         if FORCE_JSON:
             logger.warning(f'尝试强制解析')
             try:
-                return ast.literal_eval(text)#尝试非严格安全解析
+                match = re.search(r'\{.*\}', text, re.DOTALL).group(0)
+                return ast.literal_eval(match)#尝试非严格安全解析
             except Exception:
                 await send_msg(f'强制解析出现错误，请联系管理员,调用模块:{log_text}',uid,gid)
                 logger.exception(f'强制解析错误,调用模块:{log_text}')

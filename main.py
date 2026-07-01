@@ -18,13 +18,13 @@ import aiofiles
 import aiosqlite
 
 from elaina.common.plugin import ai_auto_reply_message,send_msg
-from elaina.common import setting# 挂数据库对象
+import elaina.common.setting as setting# 挂数据库对象
 
 #首先，去他丫的LOGO
 #我肯定是不会写LOGO，占地
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
     )
@@ -39,30 +39,6 @@ if not os.path.exists(os.path.join(path,'user_json')):#初始化ing
 if not os.path.exists(os.path.join(path,'group_json')):
     logger.warning('群聊数据库不存在，创建')
     os.makedirs(os.path.join(path,'group_json'))
-
-SERVER = FastAPI(title='Elaina')
-CLIENT_VERSION = 'v2.2.0'# 机器人版本，用于OTA，不要修改
-FILE_LOCK = asyncio.Lock() #谁持锁，这文件就是谁的天下。函数啊，大文件…就给你了…(趋势)(大清就交给你了)
-user_locks = {}  # 存储每个用户的锁
-KEEP_FILE = ['config.py','user_json','group_json','elaina.db']
-
-def get_formatted_time():
-    """返回当前时间，格式为 '年份-月份-日期-小时:分钟:秒'"""
-    return datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
-
-# def hot_reload_config():
-#     """用于热重载配置文件"""
-#     logger.info('正在热重载配置文件')
-#     importlib.reload(config)
-#     globals().update({k: v for k, v in vars(config).items() if not k.startswith("_")})
-#     """
-#     我承认这一大堆我也看不懂
-#     反正就是把那一大堆变量读进来,赋值给全局变量
-#     并且忽视私有变量(下划线开头)
-#     """
-"""
-因为主要的功能被移到后端了,因此热加载不能用了QAQ
-"""
 
 async def database_init():
     # 初始化数据库
@@ -86,10 +62,11 @@ async def database_init():
         await setting.db.commit()
 
 @asynccontextmanager
-async def lifespan():
+async def lifespan(app : FastAPI):
     # 控制FastAPI的生命周期函数,人话就是yield前面的是启动时做的,后面的是停止时做的
     db_type = DATABASE_TYPE.lower()# 转小写方便判断
     logger.debug(f'数据库类型:{db_type}')
+    logger.debug(f'setting库内存地址:{id(setting)}')
     db = None
     if db_type == 'sqlite':
         logger.info('确定为sqlite数据库')
@@ -107,6 +84,31 @@ async def lifespan():
     if db_type == 'sqlite' and db:
         logger.info('正在关闭sqlite数据库')
         await db.close()# 确保关闭
+
+
+SERVER = FastAPI(title='Elaina',lifespan=lifespan)
+CLIENT_VERSION = 'v2.2.0'# 机器人版本，用于OTA，不要修改
+FILE_LOCK = asyncio.Lock() #谁持锁，这文件就是谁的天下。函数啊，大文件…就给你了…(趋势)(大清就交给你了)
+user_locks = {}  # 存储每个用户的锁
+KEEP_FILE = ['config.py','user_json','group_json','elaina.db']
+
+def get_formatted_time():
+    """返回当前时间，格式为 '年份-月份-日期-小时:分钟:秒'"""
+    return datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+
+# def hot_reload_config():
+#     """用于热重载配置文件"""
+#     logger.info('正在热重载配置文件')
+#     importlib.reload(config)
+#     globals().update({k: v for k, v in vars(config).items() if not k.startswith("_")})
+#     """
+#     我承认这一大堆我也看不懂
+#     反正就是把那一大堆变量读进来,赋值给全局变量
+#     并且忽视私有变量(下划线开头)
+#     """
+"""
+因为主要的功能被移到后端了,因此热加载不能用了QAQ
+"""
 
 @SERVER.post('/')
 async def auto_reply_message(data: dict):
@@ -143,4 +145,4 @@ if __name__ == '__main__':#但愿没人闲的没事把这玩意当模块跑
         success, msg = ota.ota_update(CLIENT_VERSION, GITHUB_REPO, auto_restart=True)
         logger.info(msg)
         
-    uvicorn.run(SERVER,host=CLIENT_ADDRESS,port=CLIENT_PORT,lifespan=lifespan)#每日禁用debug(1/1)
+    uvicorn.run(SERVER,host=CLIENT_ADDRESS,port=CLIENT_PORT)#每日禁用debug(1/1)

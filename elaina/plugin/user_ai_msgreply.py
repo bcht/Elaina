@@ -123,7 +123,7 @@ async def auto_reply_message(data:dict):
             await send_msg(f'[CQ:at,qq={uid}] '+s.get('message'),uid,gid)#发送并at
 
             logger.debug(f'{uid}后处理')
-            user_info['message'].append({'role':'assistant','content':str(s)})#录入
+            user_info['message'].append({'role':'assistant','content':json.dumps(s,ensure_ascii=False)})#录入
             user_info['time'].append(get_formatted_time())
             user_info['favor'] += s.get('favor')
             if len(user_info.get('message')) > MESSAGE_UP*2:#防超限，实际上它的限制对话是当前这个数字除二  #卧槽我差点忘了还要写0（到时候全删了是吧？？？）
