@@ -125,6 +125,10 @@ async def auto_reply_message(data:dict):
                 user_info['favor'] = LOVE_UP
             elif user_info.get('favor') < -LOVE_UP:
                 user_info['favor'] = -LOVE_UP
-
-            await user.write(user_info)#写入
-            #如果这还报错你可以骂我了
+            try:
+                await user.write(user_info)#写入
+                #如果这还报错你可以骂我了
+                #好吧我还是有点不放心
+            except Exception as e:
+                send_msg('WARNING:写入用户信息时出错，请联系管理员')
+                logger.exception('写入时出错，请检查文件权限或数据库连接情况')

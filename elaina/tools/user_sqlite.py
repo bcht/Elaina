@@ -55,10 +55,15 @@ class User:
         None  
         输出:  
         None"""
-        await setting.db.execute('UPDATE users SET favor = ? WHERE uid = ?',(user_template["favor"],self.uid,))
-        cursor = await setting.db.execute('DELETE FROM messages WHERE uid = ?',(self.uid,))
-        logger.debug(f'删除了{cursor.rowcount}条记录')
-        await setting.db.commit()
+        try:
+            await setting.db.execute("BEGIN")
+            await setting.db.execute('UPDATE users SET favor = ? WHERE uid = ?',(user_template["favor"],self.uid,))
+            cursor = await setting.db.execute('DELETE FROM messages WHERE uid = ?',(self.uid,))
+            logger.debug(f'删除了{cursor.rowcount}条记录')
+            await setting.db.commit()
+        except Exception:
+            await setting.db.rollback()
+            logger.exception('delete_数据库操作失败')
     
     async def write(self,data) -> None:
         """将用户信息写入文件  
@@ -72,19 +77,24 @@ class User:
             logger.error(f'{self.uid}模版不匹配！')
             raise ValueError('模版不匹配！李在干什麽？')
         logger.debug(f'data内容：{data}')
-        cursor = await setting.db.execute('UPDATE users SET favor = ? WHERE uid = ?',(data["favor"],self.uid,))
-        if cursor.rowcount == 0:#用户不存在，创建新用户
-            await setting.db.execute("INSERT INTO users (uid, favor) VALUES (?, ?)", (self.uid, data["favor"]))#万一呢？
-        
-        cursor = await setting.db.execute('DELETE FROM messages WHERE uid = ?',(self.uid,))
-        logger.debug(f'删除了{cursor.rowcount}条记录')
-        messages_data = []
-        for i in range(len(data["message"])):#对齐
-            messages_data.append((
-                self.uid,
-                data["message"][i]["role"],
-                data["message"][i]["content"],
-                data["time"][int(i/2)],
-            ))
-        await setting.db.executemany('INSERT INTO messages (uid, role, content, time) VALUES (?, ?, ?, ?)',messages_data)#多条插入
-        await setting.db.commit()
+        try:
+            await setting.db.execute("BEGIN")
+            cursor = await setting.db.execute('UPDATE users SET favor = ? WHERE uid = ?',(data["favor"],self.uid,))
+            if cursor.rowcount == 0:#用户不存在，创建新用户
+                await setting.db.execute("INSERT INTO users (uid, favor) VALUES (?, ?)", (self.uid, data["favor"]))#万一呢？
+
+            cursor = await setting.db.execute('DELETE FROM messages WHERE uid = ?',(self.uid,))
+            logger.debug(f'删除了{cursor.rowcount}条记录')
+            messages_data = []
+            for i in range(len(data["message"])):#对齐
+                messages_data.append((
+                    self.uid,
+                    data["message"][i]["role"],
+                    data["message"][i]["content"],
+                    data["time"][int(i/2)],
+                ))
+            await setting.db.executemany('INSERT INTO messages (uid, role, content, time) VALUES (?, ?, ?, ?)',messages_data)#多条插入
+            await setting.db.commit()
+        except Exception as e:
+            await setting.db.rollback()
+            raise e
