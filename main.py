@@ -87,7 +87,7 @@ async def lifespan(app : FastAPI):
 
 
 SERVER = FastAPI(title='Elaina',lifespan=lifespan)
-CLIENT_VERSION = 'v2.2.2'# 机器人版本，用于OTA，不要修改
+CLIENT_VERSION = 'v2.2.3'# 机器人版本，用于OTA，不要修改
 KEEP_FILE = ['config.py','user_json','group_json','elaina.db']
 
 def get_formatted_time():

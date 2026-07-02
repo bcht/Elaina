@@ -9,5 +9,6 @@ class Lock_Manager:
         """获取用户专属的异步锁"""
         async with self._lock_dict:
             if self._user_weak_dict.get(uid) is None:
-                self._user_weak_dict[uid] = asyncio.Lock()
+                temp_lock = asyncio.Lock()
+                self._user_weak_dict[uid] = temp_lock
             return self._user_weak_dict[uid]
