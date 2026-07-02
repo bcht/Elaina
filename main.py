@@ -70,7 +70,7 @@ async def lifespan(app : FastAPI):
     db = None
     if db_type == 'sqlite':
         logger.info('确定为sqlite数据库')
-        logger.info('正在创建sqlite数据库')
+        logger.info('正在创建或连接sqlite数据库')
         try:
             db = await aiosqlite.connect('elaina.db')# 连接并创建数据库对象
         except aiosqlite.OperationalError:
