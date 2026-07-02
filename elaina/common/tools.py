@@ -29,7 +29,7 @@ async def send_msg(msg:str,uid:int,gid:int,mid=None):
     """
     return await _send_message(msg,uid,gid,mid)
 
-def User(uid) -> _Json_User:
+def User(uid) -> object:
     """
     创建用户对象  
     传入:  
@@ -53,16 +53,17 @@ def get_formatted_time() -> str:
     """
     return _get_time()
 
-async def json_analyze(text:str,uid:int|str,gid:int|str,log_text:str=None) -> dict:
+async def json_analyze(text:str,uid:int|str=None,gid:int|str=None,log_text:str=None) -> dict:
     """
     解析json文本,包含自动强制解析,自动记录日志  
     传入:  
     text -> 需解析的json文本  
-    uid -> 用户id  (用于输出日志)  
-    gid -> 群id  (用于输出日志)  
+    uid -> 用户id  (用于输出日志)(非必要)  
+    gid -> 群id  (用于输出日志)(非必要)  
     log_text -> 调用模块信息(用于输出日志)(非必要)  
     返回:  
-    dict -> 解析后的json文本
+    dict -> 解析后的json文本  
+    若失败: 返回{}  
     """
     return await _json_analyze(text,uid,gid,log_text)
 

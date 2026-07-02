@@ -16,6 +16,9 @@ async def send_msg(msg,uid : int,gid : int,mid = None) -> None:
         url+='/send_group_msg'
         data.update({'group_id':gid})
     else:
+        if uid is None:
+            logger.error('未指定发送对象，不予发送')
+            raise TypeError
         url+='/send_private_msg'
         data.update({'user_id':uid})
     

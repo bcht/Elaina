@@ -56,7 +56,7 @@ async def auto_reply_message(data:dict):
             user_info['message'].pop()
             user_info['time'].pop()
             if user_info['favor'] < 100:#对于防掉好感度，我还真没好的法子，只能检测是不是满的了
-                user_info['favor'] = user_info['favor'] - ast.literal_eval(s['content'])['favor']#减就相当于反向操作了
+                user_info['favor'] = user_info['favor'] - json_analyze(s['content'])['favor']#减就相当于反向操作了
             await user.write(user_info)
             await send_msg('已撤回，好感度恢复',uid,gid)
         else:
@@ -72,7 +72,7 @@ async def auto_reply_message(data:dict):
         logger.info(f'{uid}查看了上一条')
         user_info = await user.load()
         if user_info['message'] != []:
-            await send_msg(f'你：{user_info["message"][-2]['content']}\n我：{ast.literal_eval(user_info["message"][-1]['content'])['message']}\n时间：{user_info['time'][-1]}',uid,gid)
+            await send_msg(f'你：{user_info["message"][-2]['content']}\n我：{json_analyze(user_info["message"][-1]['content'])['message']}\n时间：{user_info['time'][-1]}',uid,gid)
         else:
             logger.info(f'{uid}但似乎没的可回顾…')
             await send_msg('你似乎没的可回顾…',uid,gid)
@@ -115,7 +115,7 @@ async def auto_reply_message(data:dict):
                 }
             )
             logger.debug(f'{uid}请求已完成')
-            s = await json_analyze(response.choices[0].message.content,uid,gid,log_text='AI回复')#防止AI突然抽风不给我好的json
+            s = await json_analyze(response.choices[0].message.content,uid=uid,gid=gid,log_text='AI回复')#防止AI突然抽风不给我好的json
             
             if s == {}:#json解析已经自动发送错误消息了，故不处理
                 return {}
