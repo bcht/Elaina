@@ -8,21 +8,12 @@ import httpx
 import sys
 import os
 
-from elaina.common.tools import User,send_msg,get_formatted_time,json_analyze
+from elaina.common.tools import User,send_msg,get_formatted_time,json_analyze,Lock_Manager
 from elaina.common.setting import *
 from elaina.common.path import ROOT_PATH
 
 logger = logging.getLogger(__name__)#同步主文件的日志格式
-
-file_lock = asyncio.Lock() #谁持锁，这文件就是谁的天下。函数啊，大文件…就给你了…(趋势)(大清就交给你了)
-user_locks = {}  # 存储每个用户的锁
-
-async def get_user_lock(uid: int):
-    """获取用户专属的异步锁"""
-    async with file_lock:
-        if uid not in user_locks:
-            user_locks[uid] = asyncio.Lock()
-        return user_locks[uid]
+user_lock = Lock_Manager()
 
 async def auto_reply_message(data:dict):
     uid = data.get("user_id")#目标qq
@@ -84,7 +75,7 @@ async def auto_reply_message(data:dict):
             msg = msg.replace(f'[CQ:at,qq={BOT_QQ}]','',1)
         else:
             msg = msg.replace('/AI','',1)
-        lock = await get_user_lock(uid)
+        lock = await user_lock.get_lock(uid)
         async with lock:#异步锁，防串
             user_info = await user.load()#读取用户信息
             user_info['message'].append({'role':'user','content':msg})#直接把用户的对话加进去吧

@@ -10,6 +10,7 @@ from elaina.tools.auto_load_json import json_analyze as _json_analyze
 from elaina.tools.advance.check_user_template import is_user_template_complete as _is_user_template_complete,user_template as _user_template
 from elaina.tools.user_sqlite import User as _SQLite_User
 from elaina.common.setting import DATABASE_TYPE as _db_type
+from elaina.tools.advance.lock_manager import Lock_Manager as _Lock_Manager
 
 user_template = _user_template# 定义用户模版
 _db_type = _db_type.lower()
@@ -78,3 +79,7 @@ def is_user_template_complete(data : dict ) -> bool:
     **注意该函数为同步函数**  
     """
     return _is_user_template_complete(data)
+
+def Lock_Manager() -> object:
+    """返回锁管理器"""
+    return _Lock_Manager()
