@@ -1,4 +1,5 @@
 from openai import AsyncOpenAI
+import openai
 import asyncio
 import json
 import ast
@@ -40,33 +41,49 @@ async def auto_reply_message(data:dict):
         return {}
 
     if msg.startswith('/撤回上一条'):
-        logger.info(f'{uid}撤回了上一条')
-        user_info = await user.load()
-        if user_info['message'] != []:#删两遍，因为同时有机器人和用户的对话，删的是一回合
-            s = user_info['message'].pop()#如果没毛病，那这里就是机器人的回复了(没想到吧我pop()有返回值)
-            user_info['message'].pop()
-            user_info['time'].pop()
-            if user_info['favor'] < 100:#对于防掉好感度，我还真没好的法子，只能检测是不是满的了
-                user_info['favor'] = user_info['favor'] - (await json_analyze(s['content']))['favor']#减就相当于反向操作了
-            await user.write(user_info)
-            await send_msg('已撤回，好感度恢复',uid,gid)
-        else:
-            logger.info(f'{uid}但他似乎没聊过…')
-            await send_msg('你似乎没的可撤回…',uid,gid)
+        lock = await user_lock.get_lock(uid)
+        async with lock:#异步锁，防串
+            logger.info(f'{uid}撤回了上一条')
+            user_info = await user.load()
+            if user_info['message'] != []:#删两遍，因为同时有机器人和用户的对话，删的是一回合
+                s = user_info['message'].pop()#如果没毛病，那这里就是机器人的回复了(没想到吧我pop()有返回值)
+                user_info['message'].pop()
+                user_info['time'].pop()
+                if user_info['favor'] < 100:#对于防掉好感度，我还真没好的法子，只能检测是不是满的了
+                    ai_favor = await json_analyze(s['content'])
+                    if ai_favor == {}:
+                        await send_msg('撤回失败，请联系管理员',uid,gid)
+                        logger.error(f'{uid}撤回上一条解析失败')
+                        return {}
+                    user_info['favor'] = user_info['favor'] - ai_favor['favor']#减就相当于反向操作了
+                await user.write(user_info)
+                await send_msg('已撤回，好感度恢复',uid,gid)
+                return {}
+            else:
+                logger.info(f'{uid}但他似乎没聊过…')
+                await send_msg('你似乎没的可撤回…',uid,gid)
+                return {}
 
     if  msg.startswith('/查看好感度'):
         logger.info(f'{uid}查看了好感度')
         user_info = await user.load()
         await send_msg(f'当前好感度：{user_info["favor"]}',uid,gid)
+        return {}
 
     if msg.startswith('/查看上一条'):
         logger.info(f'{uid}查看了上一条')
         user_info = await user.load()
         if user_info['message'] != []:
-            await send_msg(f'你：{user_info["message"][-2]['content']}\n我：{(await json_analyze(user_info["message"][-1]['content']))['message']}\n时间：{user_info['time'][-1]}',uid,gid)
+            bot_msg = await json_analyze(user_info["message"][-1]['content'])
+            if bot_msg == {}:
+                await send_msg('上一条消息解析失败，请联系管理员',uid,gid)
+                logger.error(f'{uid}上一条消息解析失败')
+                return {}
+            await send_msg(f'你：{user_info["message"][-2]['content']}\n我：{bot_msg['message']}\n时间：{user_info['time'][-1]}',uid,gid)
         else:
             logger.info(f'{uid}但似乎没的可回顾…')
             await send_msg('你似乎没的可回顾…',uid,gid)
+        return {}
 
 
     if msg.startswith(f'[CQ:at,qq={BOT_QQ}]') or msg.startswith('/AI'):#判断是否是AI聊天
@@ -94,17 +111,37 @@ async def auto_reply_message(data:dict):
 
             logger.debug(f'{uid}发送了请求')
             openai_client = AsyncOpenAI(api_key=API_KEY,base_url=API_ADDRESS)#构建AI客户端 APIKey或许也就在这里用了吧
-            response = await openai_client.chat.completions.create(   #发送请求
-                model=API_AI_MODEL,#模型
-                messages=message,#消息
-                temperature=API_TEMPERATURE,#温度，我个人习惯1.3
-                max_tokens=API_MAX_TOKENS,#最大生成tokens，我个人习惯4096
-                frequency_penalty=1,
-                stream=False,
-                response_format={
-                    'type':'json_object'#确保必须是结构化输出
-                }
-            )
+            try:
+                response = await openai_client.chat.completions.create(   #发送请求
+                    model=API_AI_MODEL,#模型
+                    messages=message,#消息
+                    temperature=API_TEMPERATURE,#温度，我个人习惯1.3
+                    max_tokens=API_MAX_TOKENS,#最大生成tokens，我个人习惯4096
+                    frequency_penalty=1,
+                    stream=False,
+                    response_format={
+                        'type':'json_object'#确保必须是结构化输出
+                    }
+                )
+            except openai.OpenAIError as e:#使用OpenAI基类来逐个判断，原谅我用了专家系统
+                if hasattr(e,'status_code'):
+                    status_code = e.status_code
+                    if status_code == 401:
+                        send_msg('AI请求失败，请检查APIKey',uid,gid)
+                        logger.exception(f'{uid}AI请求失败，APIKey错误')
+                    elif status_code == 402:
+                        send_msg('AI请求失败，请检查APIKey是否欠费',uid,gid)
+                        logger.exception(f'{uid}AI请求失败，APIKey欠费')
+                    elif status_code == 429:
+                        send_msg('AI请求失败，可能遭到限速，请稍后再试',uid,gid)
+                        logger.exception(f'{uid}AI请求失败，遭到限速')
+                    elif status_code == 500 or status_code == 503:
+                        send_msg('AI请求失败，服务器错误，请稍后再试',uid,gid)
+                        logger.exception(f'{uid}AI请求失败，服务器错误')
+                else:
+                    send_msg('AI请求失败，请联系管理员',uid,gid)
+                    logger.exception(f'{uid}AI请求失败，未知错误')
+                return {}
             logger.debug(f'{uid}请求已完成')
             s = await json_analyze(response.choices[0].message.content,uid=uid,gid=gid,log_text='AI回复')#防止AI突然抽风不给我好的json
             
@@ -130,5 +167,6 @@ async def auto_reply_message(data:dict):
                 #如果这还报错你可以骂我了
                 #好吧我还是有点不放心
             except Exception as e:
-                send_msg('WARNING:写入用户信息时出错，请联系管理员')
+                await send_msg('WARNING:写入用户信息时出错，请联系管理员')
                 logger.exception('写入时出错，请检查文件权限或数据库连接情况')
+            return {}
