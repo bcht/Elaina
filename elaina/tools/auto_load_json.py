@@ -36,8 +36,11 @@ async def json_analyze(text:str,uid:int|str=None,gid:int|str=None,log_text:str=N
         if FORCE_JSON:
             logger.warning(f'尝试强制解析')
             try:
-                match = re.search(r'\{.*\}', text, re.DOTALL).group(0)#假设一下上层发来了一个奇奇怪怪的字符串
-                return ast.literal_eval(match)#尝试非严格安全解析
+                match = re.search(r'\{.*\}', text, re.DOTALL)#假设一下上层发来了一个奇奇怪怪的字符串
+                if not match:
+                    logger.warning('强制解析失败，未找到json结构')
+                    return {}
+                return ast.literal_eval(match.group(0))#尝试非严格安全解析
             except Exception:
                 await _try_to_send_msg(f'强制解析出现错误，请联系管理员,调用模块:{log_text}',uid,gid)
                 logger.exception(f'强制解析错误,调用模块:{log_text}')
