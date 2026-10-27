@@ -127,19 +127,19 @@ async def auto_reply_message(data:dict):
                 if hasattr(e,'status_code'):
                     status_code = e.status_code
                     if status_code == 401:
-                        send_msg('AI请求失败，请检查APIKey',uid,gid)
+                        await send_msg('AI请求失败，请检查APIKey',uid,gid)
                         logger.exception(f'{uid}AI请求失败，APIKey错误')
                     elif status_code == 402:
-                        send_msg('AI请求失败，请检查APIKey是否欠费',uid,gid)
+                        await send_msg('AI请求失败，请检查APIKey是否欠费',uid,gid)
                         logger.exception(f'{uid}AI请求失败，APIKey欠费')
                     elif status_code == 429:
-                        send_msg('AI请求失败，可能遭到限速，请稍后再试',uid,gid)
+                        await send_msg('AI请求失败，可能遭到限速，请稍后再试',uid,gid)
                         logger.exception(f'{uid}AI请求失败，遭到限速')
                     elif status_code == 500 or status_code == 503:
-                        send_msg('AI请求失败，服务器错误，请稍后再试',uid,gid)
+                        await send_msg('AI请求失败，服务器错误，请稍后再试',uid,gid)
                         logger.exception(f'{uid}AI请求失败，服务器错误')
                 else:
-                    send_msg('AI请求失败，请联系管理员',uid,gid)
+                    await send_msg('AI请求失败，请联系管理员',uid,gid)
                     logger.exception(f'{uid}AI请求失败，未知错误')
                 return {}
             logger.debug(f'{uid}请求已完成')
