@@ -1,5 +1,5 @@
 # Elaina ChatBot
-![Python Version](https://img.shields.io/badge/python-3.9%2B-blue)
+![Python Version](https://img.shields.io/badge/python-3.12%2B-blue)
 ![License](https://img.shields.io/badge/license-Apache%202.0-green)
 ![Stars](https://img.shields.io/github/stars/bcht/Elaina)
 ![Issues](https://img.shields.io/github/issues/bcht/Elaina)
